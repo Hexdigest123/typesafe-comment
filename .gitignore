@@ -3,6 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Local on-demand evaluation harness (ground-truth fixtures + results) -- not committed
+test/
+!test/.gitkeep
+
 # C extensions
 *.so
 
