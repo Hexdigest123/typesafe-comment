@@ -232,40 +232,60 @@ def extract_comments_from_source(source: str, file: str) -> Tuple[List[Comment],
     return attached, floating
 
 
-def extract_comments(file: str) -> Tuple[List[Comment], List[Comment]]:
-    ext = os.path.splitext(file)[1].lower()
-    if ext == ".py":
-        try:
-            with open(file, "r", encoding="utf-8") as handle:
-                source = handle.read()
-        except (OSError, UnicodeDecodeError):
-            return [], []
-        return extract_comments_from_source(source, file)
-    if ext in _TS_SUPPORTED:
-        from . import treesitter
-        if not treesitter.is_available():
-            return [], []
-        try:
-            with open(file, "r", encoding="utf-8") as handle:
-                source = handle.read()
-        except (OSError, UnicodeDecodeError):
-            return [], []
-        return treesitter.extract(source, file)
-    return [], []
+def _python_extract(source: str, file: str) -> Tuple[List[Comment], List[Comment]]:
+    return extract_comments_from_source(source, file)
 
 
-def _supported_extensions() -> frozenset:
-    exts = {".py"}
+def _treesitter_extract(source: str, file: str) -> Tuple[List[Comment], List[Comment]]:
+    from . import treesitter
+    if not treesitter.is_available():
+        return [], []
+    return treesitter.extract(source, file)
+
+
+_EXTRACTORS = {
+    ".py": _python_extract,
+}
+
+
+def register_extractor(extension: str, extractor) -> None:
+    """Register a comment extractor for a file extension.
+
+    ``extractor`` is called as ``extractor(source, file)`` and must return
+    ``(attached, floating)``. Python uses stdlib ``ast``; other languages
+    delegate to the tree-sitter registry in :mod:`typesafe_comment.treesitter`.
+    Registering an existing extension replaces it.
+    """
+    _EXTRACTORS[extension.lower()] = extractor
+
+
+def _tree_sitter_extensions() -> frozenset:
     try:
         from . import treesitter
         if treesitter.is_available():
-            exts = exts | treesitter.SUPPORTED_EXTENSIONS
+            return treesitter.SUPPORTED_EXTENSIONS
     except Exception:
         pass
-    return frozenset(exts)
+    return frozenset()
 
 
-_TS_SUPPORTED = _supported_extensions()
+def _supported_extensions() -> frozenset:
+    return frozenset(_EXTRACTORS.keys()) | _tree_sitter_extensions()
+
+
+def extract_comments(file: str) -> Tuple[List[Comment], List[Comment]]:
+    ext = os.path.splitext(file)[1].lower()
+    extractor = _EXTRACTORS.get(ext)
+    if extractor is None and ext in _tree_sitter_extensions():
+        extractor = _treesitter_extract
+    if extractor is None:
+        return [], []
+    try:
+        with open(file, "r", encoding="utf-8") as handle:
+            source = handle.read()
+    except (OSError, UnicodeDecodeError):
+        return [], []
+    return extractor(source, file)
 
 
 def extract_comments_from_paths(
