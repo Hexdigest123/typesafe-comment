@@ -1,33 +1,14 @@
-"""Environment configuration for typesafe-comment.
-
-The CLI checks the general (process) environment first. If a key is already
-present in the environment (e.g. set via ``export TYPESAFE_API_KEY=...`` or a
-CI secret), it always wins. Values from a ``.env`` file only fill in gaps.
-
-The ``--env`` flag selects where to look for a ``.env`` file:
-  * ``--env`` with no path  -> ``./.env`` (cwd)
-  * ``--env ./path/to/.env`` -> that exact file
-  * not given              -> no file is loaded (environment only)
-"""
+"""Environment configuration for typesafe-comment."""
 
 import os
 from typing import Dict, Iterable, Optional, Tuple
 
 
 class EnvError(Exception):
-    """Raised when environment configuration is invalid or missing."""
+    pass
 
 
 def parse_env_file(path: str) -> Dict[str, str]:
-    """Parse a ``.env`` file into a dict without touching ``os.environ``.
-
-    Rules:
-      * ``#`` starts a comment (whole-line and inline, outside quotes).
-      * ``KEY=value`` pairs are split on the first ``=``.
-      * Surrounding single/double quotes on the value are stripped.
-      * ``export KEY=value`` prefixes are accepted.
-      * Blank lines are ignored.
-    """
     values: Dict[str, str] = {}
     try:
         with open(path, "r", encoding="utf-8") as handle:
@@ -49,8 +30,7 @@ def parse_env_file(path: str) -> Dict[str, str]:
         key = key.strip()
         if not key:
             raise EnvError("invalid env line {}:{}: empty key".format(path, lineno))
-        value = _strip_value(value)
-        values[key] = value
+        values[key] = _strip_value(value)
     return values
 
 
@@ -64,8 +44,7 @@ def _strip_value(value: str) -> str:
         rest = value[1:]
         end = rest.find(quote)
         if end != -1:
-            inner = rest[:end]
-            return inner
+            return rest[:end]
         return value
     if "#" in value:
         in_quote = None
@@ -84,11 +63,6 @@ def _strip_value(value: str) -> str:
 
 
 def _candidate_files(explicit: Optional[str]) -> Iterable[Tuple[str, bool]]:
-    """Yield (path, required) tuples for the ``--env`` flag value.
-
-    ``required`` files error if missing or unreadable; the default ``./.env``
-    (when ``--env`` is given without a path) is silently skipped if absent.
-    """
     if explicit is None:
         return
     if explicit == "":
@@ -100,19 +74,6 @@ def _candidate_files(explicit: Optional[str]) -> Iterable[Tuple[str, bool]]:
 
 
 def load_env(explicit: Optional[str]) -> Dict[str, str]:
-    """Load configuration into :data:`os.environ`.
-
-    ``explicit`` mirrors the ``--env`` flag:
-      * ``None``      -> environment only, no file loaded.
-      * ``""``        -> ``./.env`` (cwd); loaded if it exists, silently skipped
-                        otherwise.
-      * a path string -> that file; missing/unreadable raises :class:`EnvError`.
-
-    Existing environment variables always take precedence over file values.
-
-    Returns the effective configuration (the merged values currently in the
-    environment for the keys this tool manages).
-    """
     for file_path, required in _candidate_files(explicit):
         try:
             file_values = parse_env_file(file_path)
@@ -134,7 +95,6 @@ def load_env(explicit: Optional[str]) -> Dict[str, str]:
 
 
 def require_api_key() -> str:
-    """Return the configured TypeSafe API key or raise :class:`EnvError`."""
     key = os.environ.get("TYPESAFE_API_KEY", "").strip()
     if not key:
         raise EnvError(

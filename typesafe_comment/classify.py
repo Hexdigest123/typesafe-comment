@@ -1,22 +1,4 @@
-"""Comment classification via TypeSafe's System One ``score`` primitive.
-
-Each comment is scored on five heuristics with one TypeSafe call. A ``score``
-question returns a probability-weighted value across ordered levels; we normalize
-that to a 0..1 value and compare it to a per-heuristic threshold. Falling below a
-threshold emits a linter-style warning at ``file:line`` and marks the run failed
-(exit code -1).
-
-The five heuristics and the direction we score them in (higher = better):
-
-* ``usefulness``  -- does the comment add information not obvious from the code?
-* ``readability`` -- is the comment clear, concise, well-formed?
-* ``accuracy``    -- does the comment match what the code actually does?
-* ``redundancy``  -- is the comment free of redundant restatement of the code?
-                     (scored positively as "non-redundant")
-* ``coverage``    -- does the comment document the important aspects of the code?
-
-Thresholds are configurable via the CLI; see :data:`DEFAULT_THRESHOLDS`.
-"""
+"""Comment classification via TypeSafe's System One ``score`` primitive."""
 
 import os
 from dataclasses import dataclass, field
@@ -44,9 +26,6 @@ DEFAULT_THRESHOLDS: Dict[str, float] = {
     "coverage": 0.1,
 }
 
-# Ordered rubric levels for each heuristic. The TypeSafe ``score`` answer is a
-# probability-weighted value across these levels (0..N-1); we normalize it to
-# 0..1. Higher levels mean a *better* comment on that dimension.
 HEURISTIC_LEVELS: Dict[str, List[str]] = {
     "usefulness": [
         "Vacuous or placeholder; conveys no meaningful information (e.g. 'Function.', 'Does a thing.').",
@@ -80,7 +59,6 @@ HEURISTIC_LEVELS: Dict[str, List[str]] = {
     ],
 }
 
-# Each question's instruction focuses the model on the comment + code pair.
 HEURISTIC_INSTRUCTIONS: Dict[str, str] = {
     "usefulness": (
         "Rate how useful this code comment is given the accompanying code. "
@@ -112,8 +90,6 @@ HEURISTIC_INSTRUCTIONS: Dict[str, str] = {
 
 @dataclass
 class CommentItem:
-    """A comment prepared for classification plus its location context."""
-
     comment: Comment
     state: Dict[str, Any]
 
@@ -124,8 +100,6 @@ class CommentItem:
 
 @dataclass
 class Warning:
-    """A linter-style finding for a comment that failed a heuristic threshold."""
-
     file: str
     line: int
     heuristic: str
@@ -139,8 +113,6 @@ class Warning:
 
 @dataclass
 class CommentReport:
-    """The full classification result for one comment."""
-
     item: CommentItem
     scores: Dict[str, float]
     confidences: Dict[str, float] = field(default_factory=dict)
@@ -153,13 +125,6 @@ class CommentReport:
     @property
     def failed(self) -> bool:
         return bool(self.warnings)
-
-
-def _language_of(file: str) -> str:
-    """Map a source file extension to a human-readable language name for the
-    TypeSafe ``state.language`` field."""
-    ext = os.path.splitext(file)[1].lower()
-    return _EXTENSION_LANGUAGE.get(ext, "unknown")
 
 
 _EXTENSION_LANGUAGE = {
@@ -180,13 +145,12 @@ _EXTENSION_LANGUAGE = {
 }
 
 
-def build_state(comment: Comment) -> Dict[str, Any]:
-    """Build the TypeSafe ``state`` for one comment.
+def _language_of(file: str) -> str:
+    ext = os.path.splitext(file)[1].lower()
+    return _EXTENSION_LANGUAGE.get(ext, "unknown")
 
-    The state carries the comment text, its language, and the enclosing
-    function/class code so the classifier can judge the comment against the
-    code it documents.
-    """
+
+def build_state(comment: Comment) -> Dict[str, Any]:
     structure_type = comment.structure_type or "module"
     structure_name = comment.structure_name
     header = structure_type
@@ -202,7 +166,6 @@ def build_state(comment: Comment) -> Dict[str, Any]:
 
 
 def build_questions() -> Dict[str, Dict[str, Any]]:
-    """Build the TypeSafe ``questions`` map for the five heuristics."""
     questions: Dict[str, Dict[str, Any]] = {}
     for key in HEURISTICS:
         questions[key] = {
@@ -214,11 +177,6 @@ def build_questions() -> Dict[str, Dict[str, Any]]:
 
 
 def normalize_score(answer: Dict[str, Any]) -> Tuple[float, float]:
-    """Normalize a TypeSafe ``score`` answer to a 0..1 value and its confidence.
-
-    The raw ``score`` is a probability-weighted value across ``len(levels)``
-    levels (0..N-1). Dividing by ``N-1`` maps it to 0..1.
-    """
     raw = answer.get("score")
     if isinstance(raw, bool) or not isinstance(raw, (int, float)):
         raise ValueError("TypeSafe score answer missing numeric 'score' field: {!r}".format(answer))
@@ -244,7 +202,6 @@ def classify_comment(
     client: TypeSafeClient,
     thresholds: Dict[str, float],
 ) -> CommentReport:
-    """Classify one comment and produce a report with threshold warnings."""
     answers = client.evaluate_score(item.state, build_questions())
     scores: Dict[str, float] = {}
     confidences: Dict[str, float] = {}

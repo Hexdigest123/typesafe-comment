@@ -1,4 +1,4 @@
-"""Formatting of classification results into linter-style output."""
+"""Linter-style formatting of classification results."""
 
 import sys
 from typing import List
@@ -8,7 +8,6 @@ from .extractor import Comment
 
 
 def format_warning(warning: Warning) -> str:
-    """Format a single threshold failure like a linter finding."""
     return "warning: {}:{}: {} score {:.2f} below threshold {:.2f}".format(
         warning.file,
         warning.line,
@@ -19,7 +18,6 @@ def format_warning(warning: Warning) -> str:
 
 
 def format_warning_github(warning: Warning) -> str:
-    """Format a warning using GitHub's ``::warning`` command syntax."""
     return "::warning file={},line={}::{} score {:.2f} below threshold {:.2f}".format(
         warning.file,
         warning.line,
@@ -30,7 +28,6 @@ def format_warning_github(warning: Warning) -> str:
 
 
 def format_reports(reports: List[CommentReport], github_format: bool = False) -> List[str]:
-    """Return one output line per warning, sorted by file then line."""
     formatter = format_warning_github if github_format else format_warning
     warnings: List[Warning] = []
     for report in reports:
@@ -40,12 +37,6 @@ def format_reports(reports: List[CommentReport], github_format: bool = False) ->
 
 
 def format_floating_summary(floating: List[Comment]) -> List[str]:
-    """Build the end-of-run note about skipped floating comments.
-
-    Floating comments are comments outside any function/class; there is no
-    associated code to judge them against, so they are not evaluated. We still
-    tell the user where they are so nothing is silently dropped.
-    """
     lines: List[str] = []
     if not floating:
         return lines
@@ -67,7 +58,6 @@ def format_summary(
     visited_count: int,
     failed: bool,
 ) -> List[str]:
-    """Build the end-of-run summary line(s)."""
     total = len(reports)
     warning_count = sum(len(r.warnings) for r in reports)
     lines: List[str] = []
@@ -94,7 +84,6 @@ def render_report(
     github_format: bool = False,
     quiet: bool = False,
 ) -> None:
-    """Write the full report (warnings + floating note + summary) to ``stream``."""
     stream = stream or sys.stdout
     warning_lines = format_reports(reports, github_format=github_format)
     for line in warning_lines:

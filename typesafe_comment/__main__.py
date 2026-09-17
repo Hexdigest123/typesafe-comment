@@ -1,22 +1,4 @@
-"""Command-line entry point for typesafe-comment.
-
-Usage::
-
-    typesafe-comment [--env [PATH]] [--threshold H=V ...] [--github] [--quiet] [--json] PATH ...
-
-Environment:
-    The CLI checks the general (process) environment first. If ``TYPESAFE_API_KEY``
-    is already set there (or via ``export``/CI secrets), it wins. Otherwise a
-    ``.env`` file is loaded:
-      * ``--env`` with no path   -> ``./.env`` (cwd), loaded if present.
-      * ``--env ./path/to/.env``  -> that file; required to exist.
-      * not given                -> environment only.
-
-Exit codes:
-    0  -> all evaluated comments passed their thresholds.
-    -1 (255 on POSIX shells) -> one or more comments fell below a threshold, or
-        a TypeSafe API error occurred. Non-zero so pipelines/scripts block.
-"""
+"""Command-line entry point for typesafe-comment."""
 
 import argparse
 import sys
@@ -148,17 +130,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 def _resolve_env_and_paths(args):
-    """Disambiguate the optional ``--env`` value from positional scan paths.
-
-    argparse with ``nargs="?"`` greedily consumes the first positional token as
-    the env path. When that leaves no scan paths behind, the user almost
-    certainly meant the token as a scan target with the default ``./.env``
-    (e.g. ``typesafe-comment --env src/``). We correct that here so both forms
-    work intuitively:
-      * ``--env`` (alone)           -> ``./.env``, paths from positionals
-      * ``--env ./config.env src/`` -> config file is ./config.env, scan src/
-      * ``--env src/`` (no positionals) -> default ``./.env``, scan src/
-    """
     env_arg = args.env
     paths = list(args.paths)
     if env_arg is not None and env_arg != "" and not paths:

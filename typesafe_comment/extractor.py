@@ -1,16 +1,4 @@
-"""Comment and code-structure extraction.
-
-The TypeSafe classifier needs, per comment, the comment text and the code of
-the enclosing function/class. This module finds Python comments with
-:mod:`tokenize`, then attaches each comment to the nearest enclosing function or
-class node from :mod:`ast`.
-
-Comments with no enclosing function/class (free-standing, flying around at
-module level) are *detected and reported* but *not evaluated* -- there is no
-associated code to judge the comment against, so a classification would be
-meaningless. A summary of these "floating" comments is surfaced to the user at
-the end of the run, per the task spec.
-"""
+"""Comment and code-structure extraction for Python."""
 
 import ast
 import io
@@ -22,46 +10,22 @@ from typing import List, Optional, Tuple
 
 
 class CommentAttachment(Enum):
-    """Where a comment sits relative to the code structure."""
-
     DOCSTRING = "docstring"
-    """A docstring (string statement as the first statement of a function/class/module)."""
-
     BLOCK = "block"
-    """An inline comment inside the body of a function or class."""
-
     FLOATING = "floating"
-    """At module level, outside any function or class -- no associated code."""
 
 
 @dataclass(frozen=True)
 class Comment:
-    """A single comment discovered in a source file."""
-
     file: str
     line: int
-    """1-based line number where the comment starts."""
-
     column: int
-    """0-based column where the comment starts."""
-
     text: str
-    """The comment text including its leading ``#`` (docstrings: the raw string)."""
-
     kind: CommentAttachment
-    """Where the comment sits relative to code structure."""
-
     structure_name: Optional[str] = None
-    """``func``/``Class`` name the comment belongs to, or ``None`` when floating."""
-
     structure_type: Optional[str] = None
-    """``function``, ``class`` or ``module`` for docstrings; ``None`` otherwise."""
-
     structure_kind: Optional[str] = None
-    """``function``/``async function``/``class``; ``None`` for floating comments."""
-
     code: Optional[str] = None
-    """The source of the enclosing function/class (with the comment included)."""
 
 
 @dataclass
@@ -76,17 +40,10 @@ class _NodeRange:
 @dataclass
 class _DocstringRange:
     line: int
-    """1-based line of the docstring statement (for location + overlap)."""
-
     end_line: int
-    """1-based last line of the docstring statement."""
-
     name: Optional[str]
     kind: str
-    """Container kind: function / async function / class / module."""
-
     code: str
-    """Full source of the enclosing container (for the classifier)."""
 
 
 def _kind_of(node: ast.AST) -> str:
@@ -138,13 +95,6 @@ def _contains(structure: _NodeRange, line: int) -> bool:
 
 
 def _innermost(structures: List[_NodeRange], line: int) -> Optional[_NodeRange]:
-    """Return the narrowest function/class node whose body contains ``line``.
-
-    The innermost container is the most deeply nested one: in Python a nested
-    function/class always starts after its parent, so we prefer the largest
-    ``start`` (deepest), then the smallest span (narrowest), then a function over
-    a class at the same site.
-    """
     candidates = [s for s in structures if _contains(s, line)]
     if not candidates:
         return None
@@ -162,7 +112,6 @@ def _strip_comment(text: str) -> str:
 
 
 def _docstring_nodes(tree: ast.AST, source_lines: List[str]) -> List[_DocstringRange]:
-    """Collect function/class/module docstrings so they are not double-counted."""
     docstrings: List[_DocstringRange] = []
 
     def add(container: ast.AST, body: List[ast.stmt], kind: str, name: Optional[str],
@@ -200,7 +149,6 @@ def _overlaps_docstring(docstrings: List[_DocstringRange], line: int) -> bool:
 
 
 def _tokenize_comments(source: str) -> List[Tuple[int, int, str]]:
-    """Return ``[(line, col, comment_text)]`` for every ``#`` comment token."""
     comments: List[Tuple[int, int, str]] = []
     reader = io.StringIO(source).readline
     try:
@@ -213,12 +161,6 @@ def _tokenize_comments(source: str) -> List[Tuple[int, int, str]]:
 
 
 def extract_comments_from_source(source: str, file: str) -> Tuple[List[Comment], List[Comment]]:
-    """Extract comments from Python source text.
-
-    Returns ``(attached, floating)`` where ``attached`` are comments linked to a
-    function/class (docstrings and block comments) and ``floating`` are comments
-    at module level with no associated code.
-    """
     try:
         tree = ast.parse(source, filename=file)
     except SyntaxError:
@@ -291,13 +233,6 @@ def extract_comments_from_source(source: str, file: str) -> Tuple[List[Comment],
 
 
 def extract_comments(file: str) -> Tuple[List[Comment], List[Comment]]:
-    """Read ``file`` and return ``(attached, floating)`` comments.
-
-    Python (``.py``) is parsed with the stdlib :mod:`ast` extractor. C, C++,
-    JavaScript, TypeScript, Go and Rust are parsed with the tree-sitter
-    extractor when the optional ``typesafe-comment[tree-sitter]`` extra is
-    installed; without it those extensions are skipped (empty lists).
-    """
     ext = os.path.splitext(file)[1].lower()
     if ext == ".py":
         try:
@@ -337,13 +272,6 @@ def extract_comments_from_paths(
     paths: List[str],
     suffix: str = "",
 ) -> Tuple[List[Comment], List[Comment], List[str]]:
-    """Walk ``paths`` (files and directories) and collect comments.
-
-    Returns ``(attached, floating, visited)``. Directories are walked
-    recursively. Files are read by extension: ``.py`` with the stdlib extractor,
-    and C/C++/JS/TS/Go/Rust with tree-sitter when available. ``suffix`` (when
-    non-empty) further restricts which files are visited.
-    """
     attached: List[Comment] = []
     floating: List[Comment] = []
     visited: List[str] = []

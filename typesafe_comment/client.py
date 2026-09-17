@@ -1,13 +1,4 @@
-"""Minimal stdlib HTTP client for the TypeSafe System One API.
-
-Endpoint: ``POST {base}/v1/systemone`` with ``Authorization: Bearer <key>``.
-
-We avoid the optional ``typesafe-sdk-python`` dependency so the tool runs on a
-bare CPython 3.8+ interpreter; only :mod:`urllib`, :mod:`json` and :mod:`time`
-are used. Retries follow the API reference's guidance: back off exponentially on
-``429 Too Many Requests`` and ``529 Overloaded`` (and other 5xx), and do not
-retry client errors like ``401``/``422``.
-"""
+"""Minimal stdlib HTTP client for the TypeSafe System One API."""
 
 import json
 import time
@@ -17,8 +8,6 @@ from typing import Any, Dict, Optional
 
 
 class TypeSafeError(Exception):
-    """Raised when a TypeSafe API request fails (non-retryable or out of retries)."""
-
     def __init__(self, message: str, status: Optional[int] = None, body: Any = None):
         super().__init__(message)
         self.status = status
@@ -34,8 +23,6 @@ _RETRYABLE_STATUSES = {429, 500, 502, 503, 504, 529}
 
 
 class TypeSafeClient:
-    """A small synchronous client around the System One evaluation endpoint."""
-
     def __init__(
         self,
         api_key: str,
@@ -54,7 +41,6 @@ class TypeSafeClient:
         self.max_retries = int(max_retries)
 
     def evaluate(self, state: Any, questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """Evaluate ``state`` against ``questions`` and return the parsed body."""
         payload: Dict[str, Any] = {
             "state": state,
             "model": self.model,
@@ -112,7 +98,6 @@ class TypeSafeClient:
         state: Any,
         questions: Dict[str, Dict[str, Any]],
     ) -> Dict[str, Dict[str, Any]]:
-        """Evaluate and return only the ``answers`` map keyed by question id."""
         body = self.evaluate(state, questions)
         answers = body.get("answers")
         if not isinstance(answers, dict):

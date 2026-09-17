@@ -1,23 +1,4 @@
-"""Tree-sitter based comment extraction for multiple languages.
-
-When the optional ``typesafe-comment[tree-sitter]`` extra is installed, this
-module extracts comments and their enclosing function/class code from C, C++,
-JavaScript, TypeScript (and TSX), Go, Rust, and Python using a real AST.
-
-Design:
-  * Comments are real AST nodes in every supported grammar, each carrying a
-    byte range, so the comment text is sliced from the source bytes.
-  * Function/class node ranges are collected; each comment is attached to its
-    innermost enclosing function/class (or flagged floating at top level).
-  * A comment that immediately *precedes* a function/class (with no blank-line
-    gap, or one blank line) is treated as a doc comment for that function --
-    this mirrors how ``/** */`` / ``///`` / JSDoc / godoc are written.
-
-The Python path keeps using the stdlib :mod:`ast` extractor (which handles
-docstrings as first-statement string literals, not preceding comments), so it
-lives in :mod:`typesafe_comment.extractor`. This module covers the rest and is
-only imported when tree-sitter is available and the file is not Python.
-"""
+"""Tree-sitter comment extraction for C/C++/JS/TS/Go/Rust."""
 
 from __future__ import annotations
 
@@ -43,10 +24,6 @@ except Exception:
     _TREE_SITTER_AVAILABLE = False
 
 
-# Per-language grammar configuration.
-#   extension -> (language factory, function node types, class node types,
-#                 comment node types, block node type that holds the body,
-#                 whether doc comments are preceding siblings)
 _LANGUAGE_CONFIG: Dict[str, dict] = {
     ".c": {
         "language": lambda: Language(tree_sitter_c.language()),
@@ -170,14 +147,14 @@ _LANGUAGE_CONFIG: Dict[str, dict] = {
 
 SUPPORTED_EXTENSIONS = frozenset(_LANGUAGE_CONFIG.keys())
 
+NAME_NODE_TYPES = ("identifier", "type_identifier", "property_identifier", "field_identifier", "type_name")
+
 
 def is_available() -> bool:
-    """Return True if tree-sitter and the grammar packages are importable."""
     return _TREE_SITTER_AVAILABLE
 
 
 def supports_file(file: str) -> bool:
-    """Return True if this extractor handles ``file`` by extension."""
     ext = os.path.splitext(file)[1].lower()
     return ext in _LANGUAGE_CONFIG
 
@@ -194,9 +171,6 @@ class _Range:
 
 def _node_text(node, source_bytes: bytes) -> str:
     return source_bytes[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
-
-
-NAME_NODE_TYPES = ("identifier", "type_identifier", "property_identifier", "field_identifier", "type_name")
 
 
 def _extract_name(node, source_bytes: bytes, name_node_type: Optional[str]) -> Optional[str]:
@@ -257,12 +231,6 @@ def _innermost_structure(structures: List[_Range], line: int) -> Optional[_Range
 
 
 def _strip_comment_markers(text: str) -> Tuple[str, bool]:
-    """Strip comment delimiters. Returns (text, is_doc).
-
-    ``is_doc`` is True for ``/**``/``/*!`` (JSDoc/Doxygen), ``///`` or ``//!``
-    (Rust/Doxygen inner doc) -- heuristics for "this is documentation, not a
-    casual note".
-    """
     raw = text
     is_doc = False
     if raw.startswith("///") or raw.startswith("//!"):
@@ -291,46 +259,28 @@ def _strip_comment_markers(text: str) -> Tuple[str, bool]:
     return raw.strip(), is_doc
 
 
+def _content_end_line(c) -> int:
+    end_row = c.end_point[0]
+    if c.end_point[1] == 0 and end_row > c.start_point[0]:
+        end_row -= 1
+    return end_row + 1
+
+
 def _attach_preceding_doc(
     comments: List,
     structures: List[_Range],
     doc_candidate_ids: set,
 ) -> Dict[int, _Range]:
-    """Map comment-node-id -> structure for comments that document the next
-    function/class.
-
-    Only comments in ``doc_candidate_ids`` are considered -- by default that is
-    marker-style docs (``/** */``/``/*!``/``///``/``//!``). Go sets
-    ``plain_comment_is_doc`` so a plain ``//`` directly preceding a ``func`` is
-    treated as godoc. A plain ``//`` inside a function body stays a block
-    comment of its container, not a doc for the next nested declaration.
-
-    A doc comment attaches to the *next* structure whose start line follows it
-    (within a small gap of <= 2 lines, no non-comment lines between), provided
-    that structure is nested inside (or equal to) the comment's current
-    container. This handles leading docs both at module level and inside a
-    class body (a doc before a method).
-
-    Some grammars (notably Rust's ``///``) include the trailing newline in the
-    comment node's byte range, so we use the comment's *content* end line
-    (``end_point[0]`` adjusted for a trailing-newline column of 0).
-    """
     mapping: Dict[int, _Range] = {}
     structures_by_start = sorted(structures, key=lambda s: s.start_line)
     comment_lines = {c.start_point[0] + 1 for c in comments}
-
-    def content_end_line(c) -> int:
-        end_row = c.end_point[0]
-        if c.end_point[1] == 0 and end_row > c.start_point[0]:
-            end_row -= 1
-        return end_row + 1
 
     for c in comments:
         if id(c) not in doc_candidate_ids:
             continue
         c_line = c.start_point[0] + 1
         containing = _innermost_structure(structures, c_line)
-        c_end = content_end_line(c)
+        c_end = _content_end_line(c)
         for s in structures_by_start:
             if s.start_line <= c_end:
                 continue
@@ -354,11 +304,6 @@ def _attach_preceding_doc(
 
 
 def extract(source: str, file: str) -> Tuple[List[Comment], List[Comment]]:
-    """Extract ``(attached, floating)`` comments via tree-sitter.
-
-    Returns empty lists if tree-sitter is unavailable or the extension is
-    unsupported.
-    """
     if not _TREE_SITTER_AVAILABLE:
         return [], []
     ext = os.path.splitext(file)[1].lower()

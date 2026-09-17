@@ -1,13 +1,9 @@
-"""End-to-end orchestration: extract -> classify -> report -> exit code.
-
-``evaluate_files`` is the reusable core used by the CLI and by tests. It returns
-``0`` on success and ``-1`` when any comment fell below a threshold (so the tool
-blocks pipelines when used in a script, per the task spec).
-"""
+"""End-to-end orchestration: extract -> classify -> report -> exit code."""
 
 import json
+import os
 import sys
-from typing import IO, Any, Dict, List, Optional
+from typing import IO, Dict, List, Optional
 
 from .classify import (
     HEURISTICS,
@@ -23,8 +19,6 @@ from .report import render_report
 
 
 def _make_client_from_env() -> TypeSafeClient:
-    import os
-
     from .env import require_api_key
 
     api_key = require_api_key()
@@ -57,13 +51,6 @@ def evaluate_files(
     quiet: bool = False,
     json_output: bool = False,
 ) -> int:
-    """Evaluate comments in ``paths`` and render a report.
-
-    With ``json_output=True`` writes a JSON object (``results`` + ``floating`` +
-    ``summary``) suitable for the eval harness; otherwise the linter-style text
-    report. Returns ``0`` on success and ``-1`` if any comment fell below a
-    threshold or a TypeSafe API call could not complete.
-    """
     thresholds = thresholds or dict(DEFAULT_THRESHOLDS)
     attached, floating, visited = extract_comments_from_paths(paths)
 
@@ -133,7 +120,6 @@ def render_json(
     *,
     stream: Optional[IO[str]] = None,
 ) -> None:
-    """Write a JSON object with per-comment scores + warnings + floating list."""
     stream = stream or sys.stdout
     results = []
     for report in reports:
