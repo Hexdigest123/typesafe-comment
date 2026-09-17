@@ -101,6 +101,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress the floating-comment note and the PASS/FAIL summary.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "Emit a JSON object (results + floating + summary) with per-comment, "
+            "per-heuristic scores instead of the text report. Useful for the "
+            "eval harness / programmatic consumers."
+        ),
+    )
     return parser
 
 
@@ -128,6 +137,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         stream=sys.stdout,
         github_format=args.github,
         quiet=args.quiet,
+        json_output=args.json,
     )
 
 

@@ -159,3 +159,49 @@ def test_evaluate_files_directory_walk(tmp_path):
     text = out.getvalue()
     assert rc == 0
     assert "2 file(s)" in text
+
+
+def test_evaluate_files_json_output(tmp_path):
+    import json
+    path = write_sample(
+        tmp_path,
+        "good.py",
+        '''
+        def add(a, b):
+            return a + b  # sum the inputs
+        ''',
+    )
+    high = {k: 3 for k in HEURISTICS}
+    client = FakeClient(high)
+    out = io.StringIO()
+    rc = evaluate_files([path], client=client, stream=out, json_output=True)
+    payload = json.loads(out.getvalue())
+    assert rc == 0
+    assert payload["summary"]["evaluated"] == 1
+    assert payload["summary"]["failed"] is False
+    result = payload["results"][0]
+    assert result["file"].endswith("good.py")
+    assert set(result["scores"].keys()) == set(HEURISTICS)
+    assert all(v == 1.0 for v in result["scores"].values())
+    assert result["warnings"] == []
+
+
+def test_evaluate_files_json_output_fail(tmp_path):
+    import json
+    path = write_sample(
+        tmp_path,
+        "bad.py",
+        '''
+        def add(a, b):
+            return a + b  # comment
+        ''',
+    )
+    low = {k: 0 for k in HEURISTICS}
+    client = FakeClient(low)
+    out = io.StringIO()
+    rc = evaluate_files([path], client=client, stream=out, json_output=True)
+    payload = json.loads(out.getvalue())
+    assert rc == -1
+    assert payload["summary"]["failed"] is True
+    assert len(payload["results"][0]["warnings"]) == len(HEURISTICS)
+    assert "thresholds" in payload["summary"]

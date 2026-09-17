@@ -23,6 +23,18 @@ classifiers = [
 [project.scripts]
 typesafe-comment = "typesafe_comment.__main__:main"
 
+[project.optional-dependencies]
+tree-sitter = [
+    "tree-sitter>=0.23",
+    "tree-sitter-python",
+    "tree-sitter-javascript",
+    "tree-sitter-typescript",
+    "tree-sitter-c",
+    "tree-sitter-cpp",
+    "tree-sitter-go",
+    "tree-sitter-rust",
+]
+
 [project.urls]
 Homepage = "https://github.com/Hexdigest123/typesafe-comment"
 Repository = "https://github.com/Hexdigest123/typesafe-comment"

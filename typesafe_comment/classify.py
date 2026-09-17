@@ -40,7 +40,7 @@ DEFAULT_THRESHOLDS: Dict[str, float] = {
     "usefulness": 0.3,
     "readability": 0.3,
     "accuracy": 0.25,
-    "redundancy": 0.3,
+    "redundancy": 0.25,
     "coverage": 0.1,
 }
 
@@ -49,10 +49,10 @@ DEFAULT_THRESHOLDS: Dict[str, float] = {
 # 0..1. Higher levels mean a *better* comment on that dimension.
 HEURISTIC_LEVELS: Dict[str, List[str]] = {
     "usefulness": [
-        "Restates the code in trivial words; adds no information.",
-        "Adds marginal information a reader could mostly infer.",
-        "Explains intent or non-obvious behavior that helps the reader.",
-        "Provides clear, valuable context the code does not express on its own.",
+        "Vacuous or placeholder; conveys no meaningful information (e.g. 'Function.', 'Does a thing.').",
+        "Minimal but states something true and specific about the code.",
+        "Documents intent, behavior, inputs, outputs, or contracts meaningfully.",
+        "Provides valuable context, rationale, or non-obvious detail the reader needs.",
     ],
     "readability": [
         "Confusing, broken, or hard to parse.",
@@ -84,8 +84,11 @@ HEURISTIC_LEVELS: Dict[str, List[str]] = {
 HEURISTIC_INSTRUCTIONS: Dict[str, str] = {
     "usefulness": (
         "Rate how useful this code comment is given the accompanying code. "
-        "A comment is useful when it conveys intent, rationale, contracts, or "
-        "non-obvious behavior the reader cannot easily get from the code itself."
+        "A comment is useful when it conveys meaningful information about the "
+        "code's intent, behavior, or contract. A vacuous or placeholder comment "
+        "is not useful. A comment that accurately and specifically states what "
+        "the code does is at least somewhat useful, even for simple code; only "
+        "comments that convey nothing meaningful should score low."
     ),
     "readability": (
         "Rate how readable this code comment is on its own: clarity, "

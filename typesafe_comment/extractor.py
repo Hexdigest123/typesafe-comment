@@ -293,35 +293,69 @@ def extract_comments_from_source(source: str, file: str) -> Tuple[List[Comment],
 def extract_comments(file: str) -> Tuple[List[Comment], List[Comment]]:
     """Read ``file`` and return ``(attached, floating)`` comments.
 
-    Non-``.py`` files are skipped and return empty lists.
+    Python (``.py``) is parsed with the stdlib :mod:`ast` extractor. C, C++,
+    JavaScript, TypeScript, Go and Rust are parsed with the tree-sitter
+    extractor when the optional ``typesafe-comment[tree-sitter]`` extra is
+    installed; without it those extensions are skipped (empty lists).
     """
-    if not file.endswith(".py"):
-        return [], []
+    ext = os.path.splitext(file)[1].lower()
+    if ext == ".py":
+        try:
+            with open(file, "r", encoding="utf-8") as handle:
+                source = handle.read()
+        except (OSError, UnicodeDecodeError):
+            return [], []
+        return extract_comments_from_source(source, file)
+    if ext in _TS_SUPPORTED:
+        from . import treesitter
+        if not treesitter.is_available():
+            return [], []
+        try:
+            with open(file, "r", encoding="utf-8") as handle:
+                source = handle.read()
+        except (OSError, UnicodeDecodeError):
+            return [], []
+        return treesitter.extract(source, file)
+    return [], []
+
+
+def _supported_extensions() -> frozenset:
+    exts = {".py"}
     try:
-        with open(file, "r", encoding="utf-8") as handle:
-            source = handle.read()
-    except (OSError, UnicodeDecodeError):
-        return [], []
-    return extract_comments_from_source(source, file)
+        from . import treesitter
+        if treesitter.is_available():
+            exts = exts | treesitter.SUPPORTED_EXTENSIONS
+    except Exception:
+        pass
+    return frozenset(exts)
+
+
+_TS_SUPPORTED = _supported_extensions()
 
 
 def extract_comments_from_paths(
     paths: List[str],
-    suffix: str = ".py",
+    suffix: str = "",
 ) -> Tuple[List[Comment], List[Comment], List[str]]:
     """Walk ``paths`` (files and directories) and collect comments.
 
     Returns ``(attached, floating, visited)``. Directories are walked
-    recursively; only ``.py`` files are read.
+    recursively. Files are read by extension: ``.py`` with the stdlib extractor,
+    and C/C++/JS/TS/Go/Rust with tree-sitter when available. ``suffix`` (when
+    non-empty) further restricts which files are visited.
     """
     attached: List[Comment] = []
     floating: List[Comment] = []
     visited: List[str] = []
+    supported = _supported_extensions()
 
     def walk_file(path: str):
         if not os.path.isfile(path):
             return
-        if not path.endswith(suffix):
+        ext = os.path.splitext(path)[1].lower()
+        if ext not in supported:
+            return
+        if suffix and not path.endswith(suffix):
             return
         visited.append(path)
         a, f = extract_comments(path)
