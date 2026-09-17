@@ -261,7 +261,6 @@ typesafe_comment/
   classify.py      # heuristics, rubrics, normalization, threshold warnings
   report.py        # linter-style + GitHub ::warning formatting
   run.py           # extract -> classify -> report -> exit code (+ JSON mode)
-tests/            # 63 tests (extraction, treesitter, env, classification, run, CLI)
 .env.example      # template; never commit a real .env
 requirements.txt  # optional tree-sitter grammars for multi-language support
 ```

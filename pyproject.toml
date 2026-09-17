@@ -42,8 +42,3 @@ Repository = "https://github.com/Hexdigest123/typesafe-comment"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["typesafe_comment*"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-filterwarnings = ["error"]
