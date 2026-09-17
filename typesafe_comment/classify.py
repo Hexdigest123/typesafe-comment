@@ -15,10 +15,10 @@ The five heuristics and the direction we score them in (higher = better):
                      (scored positively as "non-redundant")
 * ``coverage``    -- does the comment document the important aspects of the code?
 
-Thresholds are configurable via the CLI and default to the values the task calls
-out (e.g. coverage 0.1, accuracy 0.25 fail the pipeline).
+Thresholds are configurable via the CLI; see :data:`DEFAULT_THRESHOLDS`.
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple
 
@@ -155,11 +155,37 @@ class CommentReport:
         return bool(self.warnings)
 
 
+def _language_of(file: str) -> str:
+    """Map a source file extension to a human-readable language name for the
+    TypeSafe ``state.language`` field."""
+    ext = os.path.splitext(file)[1].lower()
+    return _EXTENSION_LANGUAGE.get(ext, "unknown")
+
+
+_EXTENSION_LANGUAGE = {
+    ".py": "python",
+    ".c": "c",
+    ".h": "c",
+    ".cc": "cpp",
+    ".cpp": "cpp",
+    ".cxx": "cpp",
+    ".hpp": "cpp",
+    ".js": "javascript",
+    ".jsx": "typescript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
+    ".ts": "typescript",
+    ".go": "go",
+    ".rs": "rust",
+}
+
+
 def build_state(comment: Comment) -> Dict[str, Any]:
     """Build the TypeSafe ``state`` for one comment.
 
-    The state carries the comment text and the enclosing function/class code so
-    the classifier can judge the comment against the code it documents.
+    The state carries the comment text, its language, and the enclosing
+    function/class code so the classifier can judge the comment against the
+    code it documents.
     """
     structure_type = comment.structure_type or "module"
     structure_name = comment.structure_name
@@ -167,7 +193,7 @@ def build_state(comment: Comment) -> Dict[str, Any]:
     if structure_name:
         header = "{} {}".format(structure_type, structure_name)
     return {
-        "language": "python",
+        "language": _language_of(comment.file),
         "comment_kind": comment.kind.value,
         "structure": header,
         "comment": comment.text,

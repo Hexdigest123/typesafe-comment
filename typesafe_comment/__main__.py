@@ -2,7 +2,7 @@
 
 Usage::
 
-    typesafe-comment [--env [PATH]] [--threshold H=V ...] [--github] [--quiet] PATH ...
+    typesafe-comment [--env [PATH]] [--threshold H=V ...] [--github] [--quiet] [--json] PATH ...
 
 Environment:
     The CLI checks the general (process) environment first. If ``TYPESAFE_API_KEY``
@@ -55,13 +55,19 @@ def _threshold_action(value: str) -> dict:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="typesafe-comment",
-        description="Lint Python code comments with TypeSafe's System One decision model.",
+        description=(
+            "Lint code comments with TypeSafe's System One decision model. "
+            "Supports Python (stdlib ast) and C/C++/JS/TS/Go/Rust (tree-sitter)."
+        ),
     )
     parser.add_argument(
         "paths",
         nargs="*",
         metavar="PATH",
-        help="Python files or directories to check (directories are walked recursively).",
+        help=(
+            "Files or directories to check (directories are walked recursively). "
+            "Supported: Python, C/C++, JavaScript, TypeScript, Go, Rust."
+        ),
     )
     env_group = parser.add_mutually_exclusive_group()
     env_group.add_argument(

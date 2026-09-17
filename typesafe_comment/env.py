@@ -83,27 +83,20 @@ def _strip_value(value: str) -> str:
     return value
 
 
-def resolve_env_path(explicit: Optional[str]) -> Optional[str]:
-    """Resolve the ``--env`` flag value to a concrete file path (or None)."""
+def _candidate_files(explicit: Optional[str]) -> Iterable[Tuple[str, bool]]:
+    """Yield (path, required) tuples for the ``--env`` flag value.
+
+    ``required`` files error if missing or unreadable; the default ``./.env``
+    (when ``--env`` is given without a path) is silently skipped if absent.
+    """
     if explicit is None:
-        return None
+        return
     if explicit == "":
-        return os.path.join(os.getcwd(), ".env")
-    return os.path.abspath(explicit)
-
-
-def _candidate_files(explicit_path: Optional[str]) -> Iterable[Tuple[str, bool]]:
-    """Yield (path, required) tuples in precedence order. Required files error
-    if they are missing or unreadable; optional ones (the default ``./.env``
-    when ``--env`` is given without a path) are silently skipped."""
-    if explicit_path is None:
+        path = os.path.join(os.getcwd(), ".env")
+        if os.path.exists(path):
+            yield path, False
         return
-    cwd_default = os.path.join(os.getcwd(), ".env")
-    if explicit_path == cwd_default:
-        if os.path.exists(explicit_path):
-            yield explicit_path, False
-        return
-    yield explicit_path, True
+    yield os.path.abspath(explicit), True
 
 
 def load_env(explicit: Optional[str]) -> Dict[str, str]:
@@ -120,29 +113,16 @@ def load_env(explicit: Optional[str]) -> Dict[str, str]:
     Returns the effective configuration (the merged values currently in the
     environment for the keys this tool manages).
     """
-    if explicit is not None and explicit != "":
-        path = resolve_env_path(explicit)
-        for file_path, required in _candidate_files(path):
-            try:
-                file_values = parse_env_file(file_path)
-            except EnvError:
-                if required:
-                    raise
-                continue
-            for key, value in file_values.items():
-                if key not in os.environ:
-                    os.environ[key] = value
-    elif explicit == "":
-        path = os.path.join(os.getcwd(), ".env")
-        if os.path.exists(path):
-            try:
-                file_values = parse_env_file(path)
-            except EnvError:
-                pass
-            else:
-                for key, value in file_values.items():
-                    if key not in os.environ:
-                        os.environ[key] = value
+    for file_path, required in _candidate_files(explicit):
+        try:
+            file_values = parse_env_file(file_path)
+        except EnvError:
+            if required:
+                raise
+            continue
+        for key, value in file_values.items():
+            if key not in os.environ:
+                os.environ[key] = value
 
     return {
         "TYPESAFE_API_KEY": os.environ.get("TYPESAFE_API_KEY", ""),

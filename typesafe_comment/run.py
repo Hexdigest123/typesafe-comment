@@ -14,6 +14,7 @@ from .classify import (
     CommentItem,
     CommentReport,
     DEFAULT_THRESHOLDS,
+    build_state,
     classify_comment,
 )
 from .client import TypeSafeClient, TypeSafeError
@@ -78,7 +79,7 @@ def evaluate_files(
     reports: List[CommentReport] = []
     api_error = False
     for comment in attached:
-        item = CommentItem(comment=comment, state=_state_for(comment))
+        item = CommentItem(comment=comment, state=build_state(comment))
         try:
             report = classify_comment(item, client, thresholds)
         except TypeSafeError as exc:
@@ -181,9 +182,3 @@ def render_json(
     }
     json.dump(payload, stream, indent=2, sort_keys=True)
     stream.write("\n")
-
-
-def _state_for(comment: Comment) -> dict:
-    from .classify import build_state
-
-    return build_state(comment)
