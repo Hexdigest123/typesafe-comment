@@ -65,6 +65,8 @@ pip install -e .
 
 # With multi-language support (C/C++/JS/TS/Go/Rust)
 pip install -e ".[tree-sitter]"
+# or, via the bundled requirements file:
+pip install -r requirements.txt && pip install -e .
 
 # or, after publishing to PyPI:
 pip install typesafe-comment
@@ -261,6 +263,7 @@ typesafe_comment/
   run.py           # extract -> classify -> report -> exit code (+ JSON mode)
 tests/            # 63 tests (extraction, treesitter, env, classification, run, CLI)
 .env.example      # template; never commit a real .env
+requirements.txt  # optional tree-sitter grammars for multi-language support
 ```
 
 ## License

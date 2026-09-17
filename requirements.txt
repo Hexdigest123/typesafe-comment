@@ -1,0 +1,24 @@
+# typesafe-comment dependencies.
+#
+# The core linter (Python only) has NO runtime dependencies -- it runs on a
+# bare CPython 3.8+ interpreter. This file installs the optional tree-sitter
+# grammars that enable multi-language support (C/C++/JS/TS/Go/Rust). Python
+# comments use the stdlib `ast` extractor regardless.
+#
+# Install everything (multi-language):
+#   pip install -r requirements.txt
+# Install core only (Python, no dependencies):
+#   pip install -e .
+#   (or: pip install typesafe-comment)
+# Via the optional extra instead of this file:
+#   pip install -e ".[tree-sitter]"
+#
+# The pins below mirror the `[tree-sitter]` extra in pyproject.toml.
+tree-sitter>=0.23
+tree-sitter-python
+tree-sitter-javascript
+tree-sitter-typescript
+tree-sitter-c
+tree-sitter-cpp
+tree-sitter-go
+tree-sitter-rust
