@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "typesafe-comment"
+version = "0.1.0"
+description = "Lint code comments with TypeSafe's System One decision model."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Hexdigest" }]
+requires-python = ">=3.8"
+keywords = ["comments", "linter", "typesafe", "ai", "code-quality"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.scripts]
+typesafe-comment = "typesafe_comment.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Hexdigest123/typesafe-comment"
+Repository = "https://github.com/Hexdigest123/typesafe-comment"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["typesafe_comment*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = ["error"]
