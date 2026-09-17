@@ -11,6 +11,9 @@ license = { text = "MIT" }
 authors = [{ name = "Hexdigest" }]
 requires-python = ">=3.8"
 keywords = ["comments", "linter", "typesafe", "ai", "code-quality"]
+dependencies = [
+    "python-dotenv>=1.0",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",

@@ -8,7 +8,7 @@ non-zero so pipelines block.
 ## Install
 
 ```bash
-pip install -e .                         # Python only (stdlib, no deps)
+pip install -e .                         # Python only (needs python-dotenv)
 pip install -e ".[tree-sitter]"         # + C/C++/JS/TS/Go/Rust
 pip install -r requirements.txt         # same grammars via requirements file
 pip install typesafe-comment             # from PyPI
